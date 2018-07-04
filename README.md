@@ -1,4 +1,4 @@
-# Where.the-weather
+# Where-the-weather
 
 ### Description
 Weather app. 
