@@ -4,7 +4,7 @@
 const els = Object.freeze({
   display: document.querySelector('.display'),
   sectionCurr: document.querySelector('.current'),
-  sectionFore: document.querySelector('.forecast')
+  sectionFore: document.querySelector('.forecasts')
 });
 
 
@@ -257,7 +257,7 @@ const printData = (data) => {
   const makeForeTemplates = (dayData, foreArrIndex) => {
     const {day, date, temp, humid, weather, wind, iconUrl} = dayData;
     const [div, ...elsMinusDiv] = makeEls([
-      {el: 'div', cls: `forecast-${foreArrIndex}`},
+      {el: 'div', cls: `forecast day-${foreArrIndex}`},
       {el: 'p', cls: 'day-date', text: `${day} ${date}`},
       {el: 'p', cls: 'temp-cel', text: `${temp.celsius}°C`},
       {el: 'p', cls: 'conditions', text: weather},

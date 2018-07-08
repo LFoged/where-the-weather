@@ -23,13 +23,12 @@ body {
 }
 
 
-
 /* CLASSES */
 .container {
     font-size: 1.5rem;
     text-align: center;
     margin: 4rem auto;
-    max-width: 60%;
+    max-width: 90%;
     max-height: 80vh;
 }
 
@@ -38,7 +37,7 @@ body {
     margin: 0 2rem;
 }
 
-.forecast {
+.forecasts {
     margin: 4rem 2rem;
     display: flex;
     justify-content: space-evenly;
