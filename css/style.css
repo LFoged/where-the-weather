@@ -44,5 +44,17 @@ body {
 }
 
 
-
+.error-div {
+    text-align: center;
+    background-color: rgba(255, 0, 0, 0.4);
+    border: none;
+    margin: 1rem;
+  }
+  
+  .error-msg {
+    font-size: 1.2rem;
+    font-weight: 500;
+    color: whitesmoke;
+    padding: 0.75rem;
+  }
 

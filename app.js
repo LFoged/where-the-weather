@@ -8,7 +8,7 @@ const els = Object.freeze({
 });
 
 
-// DOM-related functions
+/** DOM-RELATED FUNCTIONS **/
 // Function - make elements, assign className & textContent if present
 const makeEls = (elsArr) => {
   const elements = elsArr.map((elObj) => {
@@ -27,14 +27,14 @@ const makeEls = (elsArr) => {
 const errAlert = (msg='Oh no! Something went wrong!') => {
   if (!document.querySelector('.error')) {
     const [errDiv, errMsg] = makeEls([
-      {el: 'div', cls: 'error'},
-      {el: 'p', cls: 'msg', text: msg}
+      {el: 'div', cls: 'error-div'},
+      {el: 'p', cls: 'error-msg', text: msg}
     ]);
     errDiv.appendChild(errMsg);
     els.display.insertBefore(errDiv, els.sectionCurr);
     setTimeout(() => {
       document.querySelector('.error').remove();
-    }, 4000);
+    }, 3000);
   } 
 };
 
@@ -54,7 +54,8 @@ const appendKids = (parent, children) => {
 
 
 
-/* PERIPHERAL DATA-related FUNCTIONS */
+
+/* PERIPHERAL DATA-RELATED FUNCTIONS */
 // Function - convert temperature from Kelvin to Celsius & Fahrenheit
 const formatTemp = (tempInKelvin) => {
   const celsius = parseFloat((tempInKelvin - 273.15).toFixed(1));
@@ -114,8 +115,9 @@ const getDayDate = (dateTime) => {
 
 
 
+
 /* CORE FUNCTIONS */
-// Data flow: getLocation => getData => formatData => printData
+// Data flow: getLocation or input => getData => formatData => printData
 
 // Function - contains functions for getting user's coordinates
 const getLocation = () => {
@@ -159,11 +161,15 @@ const getData = async (locData) => {
 
   // Function - fetch request for CURRENT & FORECAST weather data
   const makeRequest = async (urls) => {
-    const current = await fetch(urls.currentUrl).then(res => res.json());
-    const forecast = await fetch(urls.forecastUrl).then(res => res.json());
+    try {
+      const current = await fetch(urls.currentUrl).then(res => res.json());
+      const forecast = await fetch(urls.forecastUrl).then(res => res.json());
 
-    return {current, forecast};
+      return {current, forecast};
+    }
+    catch(err) { return errAlert() }
   };
+  
   const reqUrls = prepUrls(locData);
   const data = await makeRequest(reqUrls);
 
