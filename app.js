@@ -24,8 +24,8 @@ const makeEls = (elsArr) => {
 };
 
 // Function - display error messages in DOM & remove after 3s
-const errAlert = (msg='Oh no! Something went wrong!') => {
-  if (!document.querySelector('.error')) {
+const errorAlert = (msg='Oh no! Something went wrong!') => {
+  if (!document.querySelector('.error-div')) {
     const [errDiv, errMsg] = makeEls([
       {el: 'div', cls: 'error-div'},
       {el: 'p', cls: 'error-msg', text: msg}
@@ -33,8 +33,8 @@ const errAlert = (msg='Oh no! Something went wrong!') => {
     errDiv.appendChild(errMsg);
     els.display.insertBefore(errDiv, els.sectionCurr);
     setTimeout(() => {
-      document.querySelector('.error').remove();
-    }, 3000);
+      document.querySelector('.error-div').remove();
+    }, 3500);
   } 
 };
 
@@ -51,8 +51,6 @@ const clearKids = (element) => {
 const appendKids = (parent, children) => {
   return children.map((child) => parent.appendChild(child));
 };
-
-
 
 
 /* PERIPHERAL DATA-RELATED FUNCTIONS */
@@ -114,137 +112,103 @@ const getDayDate = (dateTime) => {
 };
 
 
-
-
 /* CORE FUNCTIONS */
-// Data flow: getLocation or input => getData => formatData => printData
+// FUNC. - try get location through navigator Obj. or IP address
+const getLocation = (errAlert) => {
+  return new Promise((resolve, reject) => {
+    navigator.geolocation.getCurrentPosition(resolve, (PositionError) => {
+      (PositionError.code === 1)
+        ? errAlert('Browser Geolocation Denied. Using IP address instead')
+        : errAlert('Browser Geolocation Not Supported. Using IP address');
 
-// Function - contains functions for getting user's coordinates
-const getLocation = () => {
-  // Function - get location by geolocation. - use IP address as alternative
-  const getGeoLoc = () => {
-    navigator.geolocation.getCurrentPosition(getData, (PositionError) => {
-      PositionError.code === 1
-        ? errAlert('Browser Geolocation denied by user. Using IP address.')
-        : errAlert('Unable to get browser Geolocation. Using IP address.');
-
-      return getIpLoc();
+      // on reject, get location through IP address (using 3rd party service)
+      reject(fetch('https://ipapi.co/json/'));
     });
+  });  
+};
+
+// FUNC. - format coordinates into URLs to make requests for weather data
+const prepRequestUrls = (locData) => {
+  const lat = locData.latitude || locData.coords.latitude;
+  const lon = locData.longitude || locData.coords.longitude;
+  const apiKey = '&appid=5300f8bc54b3884e3240c056f4d4617a';
+  const urlBase = 'https://api.openweathermap.org/data/2.5/';
+  const urls = {
+    currentUrl: `${urlBase}weather?lat=${lat}&lon=${lon}${apiKey}`,
+    forecastUrl: `${urlBase}forecast?lat=${lat}&lon=${lon}${apiKey}`
   };
 
-  // Function - get location by IP address
-  const getIpLoc = async () => {
-    const IPLoc = await fetch('http://ip-api.com/json').then(res => res.json());
+  return urls;
+};
+
+// FUNC. - make request for weather data
+const getWeatherData = async (urls, errAlert) => {
+  try {
+    const current = await fetch(urls.currentUrl).then(res => res.json());
+    const forecast = await fetch(urls.forecastUrl).then(res => res.json());
+
+    return {current, forecast};
+  }
+  catch(err) { return errAlert(); }
+};
+
+// FUNC. - format data for current weather
+const formatCurrentData = (currData) => {
+  const {main, wind, weather} = currData;
+  // group today's temps. & uppercase 1st letters of weather description 
+  const currTemps = [main.temp, main.temp_max, main.temp_min].map(formatTemp);
+  const currDescription = upperFirst(weather[0].description);
+  // formatted weather data
+  return ({
+    loc: {
+      area: currData.name,
+      country: currData.sys.country
+    },
+    temp: {
+      now: currTemps[0],
+      high: currTemps[1],
+      low: currTemps[2]
+    },
+    humid: main.humidity,
+    weather: currDescription,
+    wind: wind.speed,
+    iconUrl: `https://openweathermap.org/img/w/${weather[0].icon}.png`
+  });
+};
+
+// FUNC. - format data for weather forecast
+const formatForecastData = (foreData) => {
+  // noon (12:00) forecasts for next 3 days
+  const threeDayNoonForecasts = nextThreeDayNoonForecasts(foreData);
+  const forecastsFormatted = threeDayNoonForecasts.map((data) => {
+    const dayDate = getDayDate(data.dt);
+    const dayTemp = formatTemp(data.main.temp);
+    const dayDesc = upperFirst(data.weather[0].description);
     
-    return getData(IPLoc);
-  };
-
-  navigator.geolocation ? getGeoLoc() : getIpLoc();
-};
-
-
-// Function - contains functions for preparing URLs & making requests
-const getData = async (locData) => {
-  // Function - prepare urls to make request for weather data
-  const prepUrls = (locData) => {
-    const lat = locData.lat || locData.coords.latitude;
-    const lon = locData.lon || locData.coords.longitude;
-    const apiKey = '&appid=5300f8bc54b3884e3240c056f4d4617a';
-    const urlBase = 'https://api.openweathermap.org/data/2.5/';
-    const urls = {
-      currentUrl: `${urlBase}weather?lat=${lat}&lon=${lon}${apiKey}`,
-      forecastUrl: `${urlBase}forecast?lat=${lat}&lon=${lon}${apiKey}`
+    return {
+      day: dayDate.day,
+      date: dayDate.date,
+      temp: dayTemp,
+      humid: data.main.humidity,
+      weather: dayDesc,
+      wind: data.wind.speed,
+      iconUrl: `https://openweathermap.org/img/w/${data.weather[0].icon}.png`
     };
+  });
 
-    return urls;
-  };
-
-  // Function - fetch request for CURRENT & FORECAST weather data
-  const makeRequest = async (urls) => {
-    try {
-      const current = await fetch(urls.currentUrl).then(res => res.json());
-      const forecast = await fetch(urls.forecastUrl).then(res => res.json());
-
-      return {current, forecast};
-    }
-    catch(err) { return errAlert() }
-  };
-  
-  const reqUrls = prepUrls(locData);
-  const data = await makeRequest(reqUrls);
-
-  return formatData(data, printData);
-};
-
-
-// Function - contains functions for formatting current- & forecast weather data
-const formatData = (data) => {
-  const {current, forecast} = data;
-  // Function - extracts & formats relevant data from raw CURRENT weather data 
-  const formatCurrentData = (currData) => {
-    const {main, wind, weather} = currData;
-    // group today's temps. & uppercase 1st letters of weather description 
-    const currTemps = [main.temp, main.temp_max, main.temp_min].map(formatTemp);
-    const currDescription = upperFirst(weather[0].description);
-    // formatted weather data
-    const currentFormated = {
-      loc: {
-        area: currData.name,
-        country: currData.sys.country
-      },
-      temp: {
-        now: currTemps[0],
-        high: currTemps[1],
-        low: currTemps[2]
-      },
-      humid: main.humidity,
-      weather: currDescription,
-      wind: wind.speed,
-      iconUrl: `https://openweathermap.org/img/w/${weather[0].icon}.png`
-    }
-
-    return currentFormated;
-  };
-
-  // Function - extracts & formats relevant data from raw FORECAST weather data 
-  const formatForecastData = (foreData) => {
-    // noon (12:00) forecasts for next 3 days
-    const threeDayNoonForecasts = nextThreeDayNoonForecasts(foreData);
-    // formatted forecast data
-    const forecastsFormatted = threeDayNoonForecasts.map((data) => {
-      const dayDate = getDayDate(data.dt);
-      const dayTemp = formatTemp(data.main.temp);
-      const dayDesc = upperFirst(data.weather[0].description);
-      
-      return {
-        day: dayDate.day,
-        date: dayDate.date,
-        temp: dayTemp,
-        humid: data.main.humidity,
-        weather: dayDesc,
-        wind: data.wind.speed,
-        iconUrl: `https://openweathermap.org/img/w/${data.weather[0].icon}.png`
-      };
-    });
-
-    return forecastsFormatted;
-  };
-  const currentFormated = formatCurrentData(current);
-  const forecastsFormatted = formatForecastData(forecast);
-
-  return printData({currentFormated, forecastsFormatted});
+  return forecastsFormatted;
 };
 
 
 // Function - contains functions for printing data to DOM
 const printData = (data) => {
-  const {currentFormated, forecastsFormatted} = data;
+  const {currentFormatted, forecastsFormatted} = data;
   // use document fragments to only touch DOM once
-  const currFragment = document.createDocumentFragment();
-  const foreFragment = document.createDocumentFragment();
+  const currentFragment = document.createDocumentFragment();
+  const forecastsFragment = document.createDocumentFragment();
 
   // Function - create template for current weather
-  const makeCurrTemplate = (currData) => {
+  const makeCurrentTemplate = (currData) => {
     const {weather, humid, loc, temp, wind, iconUrl} = currData;
     const elsMinusIcon = makeEls([
       {el: 'h2', cls: 'location', text: `${loc.area} - ${loc.country}`},
@@ -259,8 +223,8 @@ const printData = (data) => {
     return [...elsMinusIcon, icon];
   };
   
-  // Function - print FORECAST data to DOM
-  const makeForeTemplates = (dayData, foreArrIndex) => {
+  // Function - create template for weather forecast
+  const makeForecastTemplates = (dayData, foreArrIndex) => {
     const {day, date, temp, humid, weather, wind, iconUrl} = dayData;
     const [div, ...elsMinusDiv] = makeEls([
       {el: 'div', cls: `forecast day-${foreArrIndex}`},
@@ -277,17 +241,26 @@ const printData = (data) => {
     return div;
   };
 
-  appendKids(currFragment, makeCurrTemplate(currentFormated));
-  appendKids(foreFragment, forecastsFormatted.map(makeForeTemplates));
+  appendKids(currentFragment, makeCurrentTemplate(currentFormatted));
+  appendKids(forecastsFragment, forecastsFormatted.map(makeForecastTemplates));
 
   return (
-    els.sectionCurr.appendChild(currFragment),
-    els.sectionFore.appendChild(foreFragment)
+    els.sectionCurr.appendChild(currentFragment),
+    els.sectionFore.appendChild(forecastsFragment)
   );
 };
 
 
-// Call to 'getLocation' func. starts program
+// FUNC. - 'ctrl' (control), initiates & controls flow of program
 // data flow: getLocation => getData => formatData => printData
-getLocation();
-
+const ctrl = ( async (errorAlert) => {
+  // get location from browser (on resolve) or fetch() IP address (on reject)
+  const coordinates = await getLocation(errorAlert)
+    .catch(ipLocate => ipLocate.then(res => res.json()).catch(console.error));
+  const requestUrls = prepRequestUrls(coordinates);
+  const weatherData = await getWeatherData(requestUrls, errorAlert);
+  const {current, forecast} = weatherData;
+  const currentFormatted = formatCurrentData(current);
+  const forecastsFormatted = formatForecastData(forecast);
+  printData({currentFormatted, forecastsFormatted})
+})(errorAlert);

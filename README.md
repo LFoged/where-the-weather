@@ -5,6 +5,10 @@ Weather app.
 Gets user's geo-location using browser navigator object if possible, or IP address if no navigator, error or request blocked by user.
 Uses openweathermap API to fetch current & forecast weather data for location and then displays current weather conditions & 3-day forecast.
 
+### Status
+- functionality complete
+- TODO: styling
+
 ### User stories
 A user can:
 1. accept / deny access to their browser location. 
