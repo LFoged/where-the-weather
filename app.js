@@ -4,7 +4,9 @@
 const els = Object.freeze({
   display: document.querySelector('.display'),
   sectionCurr: document.querySelector('.current'),
-  sectionFore: document.querySelector('.forecasts')
+  sectionFore: document.querySelector('.forecasts'),
+  input: document.querySelector('.input'),
+  suggestions: document.querySelector('#suggestions')
 });
 
 
@@ -91,22 +93,18 @@ const nextThreeDayNoonForecasts = (forecast) => {
 
 // Function - get weekday and date from date-time
 const getDayDate = (dateTime) => {
-  const dateEnd = (date) => {
-    const dateArr = date.toString().split('')
-    const lastDigit = parseInt(dateArr[dateArr.length - 1]);
+  const dateSuffix = (date) => {
+    const dateLastDigit = date.toString().split('').pop();
+    const suffixes = {1: 'st', 2: 'nd', 3: 'rd'};
     
-    return (
-      lastDigit === 1 ? 'st' 
-      : lastDigit === 2 ? 'nd'
-      : lastDigit === 3 ? 'rd' : 'th'
-    );
+    return suffixes[dateLastDigit] || 'th';
   };
   
   const weekDays = ['Sun.', 'Mon.', 'Tue.', 'Wed.', 'Thu.', 'Fri.', 'Sat.' ]  
   const unixTime = new Date(dateTime * 1000);
   const day = weekDays[unixTime.getDay()];
   const dateNum = unixTime.getDate();
-  const date = `${dateNum}${dateEnd(dateNum)}`;
+  const date = `${dateNum}${dateSuffix(dateNum)}`;
 
   return {day, date};
 };
@@ -122,7 +120,7 @@ const getLocation = (errAlert) => {
         : errAlert('Browser Geolocation Not Supported. Using IP address');
 
       // on reject, get location through IP address (using 3rd party service)
-      reject(fetch('https://ipapi.co/json/'));
+      return reject(fetch('https://ipapi.co/json/'));
     });
   });  
 };
@@ -200,16 +198,10 @@ const formatForecastData = (foreData) => {
 };
 
 
-// Function - contains functions for printing data to DOM
-const printData = (data) => {
-  const {currentFormatted, forecastsFormatted} = data;
-  // use document fragments to only touch DOM once
-  const currentFragment = document.createDocumentFragment();
-  const forecastsFragment = document.createDocumentFragment();
-
-  // Function - create template for current weather
-  const makeCurrentTemplate = (currData) => {
+const templates = Object.freeze({
+  current: (currData) => {
     const {weather, humid, loc, temp, wind, iconUrl} = currData;
+    const currentFragment = document.createDocumentFragment();
     const elsMinusIcon = makeEls([
       {el: 'h2', cls: 'location', text: `${loc.area} - ${loc.country}`},
       {el: 'p', cls: 'temp-cel', text: `${temp.now.celsius}°C`},
@@ -220,34 +212,64 @@ const printData = (data) => {
     const [icon] = makeEls([{el: 'img', cls: 'icon'}]);
     icon.src = iconUrl;
     // °C | °F
-    return [...elsMinusIcon, icon];
-  };
+    appendKids(currentFragment, [...elsMinusIcon, icon]);
   
-  // Function - create template for weather forecast
-  const makeForecastTemplates = (dayData, foreArrIndex) => {
-    const {day, date, temp, humid, weather, wind, iconUrl} = dayData;
-    const [div, ...elsMinusDiv] = makeEls([
-      {el: 'div', cls: `forecast day-${foreArrIndex}`},
-      {el: 'p', cls: 'day-date', text: `${day} ${date}`},
-      {el: 'p', cls: 'temp-cel', text: `${temp.celsius}°C`},
-      {el: 'p', cls: 'conditions', text: weather},
-      {el: 'p', cls: 'wind', text: `Wind Speed: ${wind}m/s`},
-      {el: 'p', cls: 'humidity', text: `Relative Humidity: ${humid}%`},
-    ]);
-    const [icon] = makeEls([{el: 'img', cls: 'icon'}]);
-    icon.src = iconUrl;
-    appendKids(div, [...elsMinusDiv, icon]);
+    return currentFragment;
+  },
+
+  forecast: (forecastsArray) => {
+    const forecastsFragment = document.createDocumentFragment();
+    const forecastElements = forecastsArray.map((dayData, foreArrIndex) => {
+      const {day, date, temp, humid, weather, wind, iconUrl} = dayData;
+      const [div, ...elsMinusDiv] = makeEls([
+        {el: 'div', cls: `forecast day-${foreArrIndex}`},
+        {el: 'p', cls: 'day-date', text: `${day} ${date}`},
+        {el: 'p', cls: 'temp-cel', text: `${temp.celsius}°C`},
+        {el: 'p', cls: 'conditions', text: weather},
+        {el: 'p', cls: 'wind', text: `Wind Speed: ${wind}m/s`},
+        {el: 'p', cls: 'humidity', text: `Relative Humidity: ${humid}%`},
+      ]);
+      const [icon] = makeEls([{el: 'img', cls: 'icon'}]);
+      icon.src = iconUrl;
+      appendKids(div, [...elsMinusDiv, icon]);
+      
+      return div;
+    });
+    appendKids(forecastsFragment, forecastElements);
     
-    return div;
+    return forecastsFragment;
+  },
+
+  suggestions: (dataArray) => {
+    const suggestionsFragment = document.createDocumentFragment();
+    const datalist = dataArray.map((item, index) => {
+      return {el: 'option', text: item.label, cls: `suggestion-${index + 1}`};
+    });
+    appendKids(suggestionsFragment, makeEls(datalist));
+    
+    return suggestionsFragment
+  }
+});
+
+
+// simple printer
+const printer = (element, target) => {
+  return target.appendChild(element);
+};
+
+
+
+// fetch suggestions
+const getSuggestions = async (input) => {
+  const url = {
+    base: 'http://autocomplete.geocoder.cit.api.here.com/6.2/suggest.json',
+    query: `?query=${input}`,
+    key: '&app_id=3oI0LXZeAMiglU1EBV1s&app_code=J2ZHJndECYuApR5YZ-Aypg'
   };
-
-  appendKids(currentFragment, makeCurrentTemplate(currentFormatted));
-  appendKids(forecastsFragment, forecastsFormatted.map(makeForecastTemplates));
-
-  return (
-    els.sectionCurr.appendChild(currentFragment),
-    els.sectionFore.appendChild(forecastsFragment)
-  );
+  const {suggestions} = await fetch(`${url.base}${url.query}${url.key}`)
+    .then((res) => res.json());
+  
+  return suggestions;
 };
 
 
@@ -262,5 +284,20 @@ const ctrl = ( async (errorAlert) => {
   const {current, forecast} = weatherData;
   const currentFormatted = formatCurrentData(current);
   const forecastsFormatted = formatForecastData(forecast);
-  printData({currentFormatted, forecastsFormatted})
+  const currentTemplate = templates.current(currentFormatted);
+  const forecastTemplate = templates.forecast(forecastsFormatted);
+  printer(currentTemplate, els.sectionCurr);
+  printer(forecastTemplate, els.sectionFore);
+
+  // controller for autosuggestions - location input
+  const suggestionCtrl = async (event) => {
+    const userInput = event.target.value;
+    const suggestions = await getSuggestions(userInput);
+    const suggestionsTemplate = templates.suggestions(suggestions);
+    clearKids(els.suggestions);
+    printer(suggestionsTemplate, els.suggestions)
+  };
+
+  // event-listener for location-search
+  els.input.addEventListener('keyup', suggestionCtrl);
 })(errorAlert);
