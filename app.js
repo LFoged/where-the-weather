@@ -6,7 +6,8 @@ const els = Object.freeze({
   sectionCurr: document.querySelector('.current'),
   sectionFore: document.querySelector('.forecasts'),
   input: document.querySelector('.input'),
-  suggestions: document.querySelector('#suggestions')
+  suggestions: document.querySelector('#suggestions'),
+  inputForm: document.querySelector('.input-form')
 });
 
 
@@ -36,7 +37,7 @@ const errorAlert = (msg='Oh no! Something went wrong!') => {
     els.display.insertBefore(errDiv, els.sectionCurr);
     setTimeout(() => {
       document.querySelector('.error-div').remove();
-    }, 3500);
+    }, 3000);
   } 
 };
 
@@ -115,9 +116,11 @@ const getDayDate = (dateTime) => {
 const getLocation = (errAlert) => {
   return new Promise((resolve, reject) => {
     navigator.geolocation.getCurrentPosition(resolve, (PositionError) => {
-      (PositionError.code === 1)
-        ? errAlert('Browser Geolocation Denied. Using IP address instead')
-        : errAlert('Browser Geolocation Not Supported. Using IP address');
+      const errorMessages = {
+        1: 'Browser Geolocation Denied. Using IP address.',
+        2: 'Browser Geolocation Not Supported. Using IP address.',
+      };
+      errAlert(errorMessages[PositionError.code] || '');
 
       // on reject, get location through IP address (using 3rd party service)
       return reject(fetch('https://ipapi.co/json/'));
@@ -125,15 +128,36 @@ const getLocation = (errAlert) => {
   });  
 };
 
+// FUNC. - fetch suggestions for autocomplete location input
+const getSuggestions = async (input) => {
+  const url = {
+    base: 'http://autocomplete.geocoder.cit.api.here.com/6.2/suggest.json',
+    query: `?query=${input}&resultType=areas&language=en`,
+    key: '&app_id=3oI0LXZeAMiglU1EBV1s&app_code=J2ZHJndECYuApR5YZ-Aypg'
+  };
+  const {suggestions} = await fetch(`${url.base}${url.query}${url.key}`)
+    .then((res) => res.json())
+    .catch((err) => errorAlert(''));
+  
+  return suggestions;
+};
+
 // FUNC. - format coordinates into URLs to make requests for weather data
 const prepRequestUrls = (locData) => {
-  const lat = locData.latitude || locData.coords.latitude;
-  const lon = locData.longitude || locData.coords.longitude;
+  let query;
+  if (locData.userInput) {
+    const {city, code} = locData;
+    query = `q=${city},${code}`;
+  } else {
+    const lat = locData.latitude || locData.coords.latitude;
+    const lon = locData.longitude || locData.coords.longitude;
+    query = `lat=${lat}&lon=${lon}`;
+  }
   const apiKey = '&appid=5300f8bc54b3884e3240c056f4d4617a';
   const urlBase = 'https://api.openweathermap.org/data/2.5/';
   const urls = {
-    currentUrl: `${urlBase}weather?lat=${lat}&lon=${lon}${apiKey}`,
-    forecastUrl: `${urlBase}forecast?lat=${lat}&lon=${lon}${apiKey}`
+    currentUrl: `${urlBase}weather?${query}${apiKey}`,
+    forecastUrl: `${urlBase}forecast?${query}${apiKey}`
   };
 
   return urls;
@@ -197,7 +221,7 @@ const formatForecastData = (foreData) => {
   return forecastsFormatted;
 };
 
-
+// Obj. containing methods for creating different templates
 const templates = Object.freeze({
   current: (currData) => {
     const {weather, humid, loc, temp, wind, iconUrl} = currData;
@@ -242,62 +266,91 @@ const templates = Object.freeze({
 
   suggestions: (dataArray) => {
     const suggestionsFragment = document.createDocumentFragment();
-    const datalist = dataArray.map((item, index) => {
-      return {el: 'option', text: item.label, cls: `suggestion-${index + 1}`};
-    });
-    appendKids(suggestionsFragment, makeEls(datalist));
-    
+    const citiesArray = dataArray
+      .filter((item) => item.matchLevel === 'city')
+      .map((item, index) => {
+        const {city, country} = item.address;
+        const code = item.countryCode;
+        
+        return {
+          el: 'option', 
+          text: `${city}, ${country} - ${code}`, 
+          cls: `option-${index + 1}`};
+      });
+    appendKids(suggestionsFragment, makeEls(citiesArray));
+
     return suggestionsFragment
   }
 });
 
 
-// simple printer
+const searchSuggestions = Object.freeze({
+  ctrl: async (event) => {
+    const userInput = event.target.value.trim();
+    // stop request & clear datalist if only option & input value match
+    if (document.querySelector('.option-1')) {
+      const suggestion1 = document.querySelector('.option-1').textContent;
+      if (userInput === suggestion1) return clearKids(els.suggestions);
+    }
+    if (userInput.length > 2) {
+      const suggestions = await getSuggestions(userInput);
+      const suggestionsTemplate = templates.suggestions(suggestions);
+      clearKids(els.suggestions);
+      printer(suggestionsTemplate, els.suggestions)
+    }
+  }
+});
+
+
+// simple printer - appends templates to DOM
 const printer = (element, target) => {
   return target.appendChild(element);
 };
 
 
 
-// fetch suggestions
-const getSuggestions = async (input) => {
-  const url = {
-    base: 'http://autocomplete.geocoder.cit.api.here.com/6.2/suggest.json',
-    query: `?query=${input}`,
-    key: '&app_id=3oI0LXZeAMiglU1EBV1s&app_code=J2ZHJndECYuApR5YZ-Aypg'
-  };
-  const {suggestions} = await fetch(`${url.base}${url.query}${url.key}`)
-    .then((res) => res.json());
-  
-  return suggestions;
-};
-
-
 // FUNC. - 'ctrl' (control), initiates & controls flow of program
 // data flow: getLocation => getData => formatData => printData
-const ctrl = ( async (errorAlert) => {
+const mainCtrl = ( async (errorAlert) => {
   // get location from browser (on resolve) or fetch() IP address (on reject)
   const coordinates = await getLocation(errorAlert)
-    .catch(ipLocate => ipLocate.then(res => res.json()).catch(console.error));
-  const requestUrls = prepRequestUrls(coordinates);
-  const weatherData = await getWeatherData(requestUrls, errorAlert);
-  const {current, forecast} = weatherData;
-  const currentFormatted = formatCurrentData(current);
-  const forecastsFormatted = formatForecastData(forecast);
-  const currentTemplate = templates.current(currentFormatted);
-  const forecastTemplate = templates.forecast(forecastsFormatted);
-  printer(currentTemplate, els.sectionCurr);
-  printer(forecastTemplate, els.sectionFore);
+    .catch(ipLocate => ipLocate.then(res => res.json()).catch(errorAlert));
 
-  // controller for autosuggestions - location input
-  const suggestionCtrl = async (event) => {
-    const userInput = event.target.value;
-    const suggestions = await getSuggestions(userInput);
-    const suggestionsTemplate = templates.suggestions(suggestions);
-    clearKids(els.suggestions);
-    printer(suggestionsTemplate, els.suggestions)
+  //
+  const getWeather = async (searchParams) => {
+    const requestUrls = prepRequestUrls(searchParams);
+    try {
+      const weatherData = await getWeatherData(requestUrls, errorAlert);
+      const {current, forecast} = weatherData;
+      const currentFormatted = formatCurrentData(current);
+      const forecastsFormatted = formatForecastData(forecast);
+      const currentTemplate = templates.current(currentFormatted);
+      const forecastTemplate = templates.forecast(forecastsFormatted);
+      printer(currentTemplate, els.sectionCurr);
+      printer(forecastTemplate, els.sectionFore);
+      clearKids(els.suggestions);
+      els.input.value = '';
+    }
+    catch(err) { return errorAlert() }
   };
 
+  // 
+  const test = (event) => {
+    event.preventDefault();
+    const city = els.input.value.split(',').shift();
+    const code = els.input.value.split('-').pop();
+    const searchLocation = {city, code, userInput: true};
+    clearKids(els.sectionCurr);
+    clearKids(els.sectionFore);
+
+    return getWeather(searchLocation);
+  };
+
+
+  getWeather(coordinates);
+
+
   // event-listener for location-search
-  els.input.addEventListener('keyup', suggestionCtrl);
+  els.input.addEventListener('keyup', searchSuggestions.ctrl);
+  els.inputForm.addEventListener('submit', test);
 })(errorAlert);
