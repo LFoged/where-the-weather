@@ -2,17 +2,13 @@
 
 ### Description
 Weather app. 
-Gets user's geo-location using browser navigator object if possible, or IP address if no navigator, error or request blocked by user.
-Uses openweathermap API to fetch current & forecast weather data for location and then displays current weather conditions & 3-day forecast.
-
-### Status
-- functionality complete
-- TODO: styling
+Gets user's geo-location using browser navigator object if possible (& permitted by user), or else IP address.
+Uses openweathermap API to fetch weather data for location - displays current weather conditions & 3-day forecast.
 
 ### User stories
 A user can:
-1. accept / deny access to their browser location. 
-2. see the current weather & a 3-day forecast for their location - accuracy of location might vary, depending on whether browser navigator object is used or IP address.
+1. See the current weather location & a 3-day forecast for their location
+**NOTE:** accuracy of location (& data) might vary, depending on whether browser navigator object is used or IP address.
 
 
 ### Tech used
