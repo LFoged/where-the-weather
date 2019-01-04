@@ -16,10 +16,9 @@ html {
 /* TAGS */
 body {
     font-family: Arial, Helvetica, sans-serif;
-    color: whitesmoke;
-    background: #41295a;  /* fallback for old browsers */
-    background: -webkit-linear-gradient(to right, #2F0743, #41295a);  /* Chrome 10-25, Safari 5.1-6 */
-    background: linear-gradient(to right, #2F0743, #41295a); /* W3C, IE 10+/ Edge, Firefox 16+, Chrome 26+, Opera 12+, Safari 7+ */    
+    color:rgba(39, 1, 255, 0.733);
+    letter-spacing: .055rem;
+    line-height: 2rem;
 }
 
 
@@ -28,33 +27,49 @@ body {
     font-size: 1.5rem;
     text-align: center;
     margin: 4rem auto;
-    max-width: 90%;
+    max-width: 95%;
     max-height: 80vh;
 }
 
+.location {
+    margin-bottom: 4rem;
+}
+
 .current {
-    color: whitesmoke;
     margin: 0 2rem;
 }
 
 .forecasts {
-    margin: 4rem 2rem;
+    margin: 2rem 2rem;
     display: flex;
     justify-content: space-evenly;
+    flex-wrap: wrap;
 }
 
+.forecast {
+    min-width: 12rem;
+    margin: 1rem;
+    padding: 1rem 1.5rem;
+    background-color: rgb(250, 250, 250);
+    box-shadow: 0rem .25rem .2rem rgba(0,0,0,.4);
+    border: .1rem solid rgb(230, 230, 230);
+    border-radius: .5rem;
+}
 
 .error-div {
     text-align: center;
-    background-color: rgba(255, 0, 0, 0.4);
+    background-color: rgba(255, 0, 0, 0.719);
     border: none;
-    margin: 1rem;
   }
   
-  .error-msg {
-    font-size: 1.2rem;
+.error-msg {
+    font-size: 1.8rem;
     font-weight: 500;
-    color: whitesmoke;
-    padding: 0.75rem;
-  }
+    color: rgb(250, 250, 250);
+    padding: 1.75rem;
+}
 
+.spinner {
+    max-width: 10rem;
+    max-height: 10rem;
+}

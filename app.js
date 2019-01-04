@@ -45,6 +45,7 @@ const DOM = ((UTILS) => {
   const els = Object.freeze({
     display: _doc.querySelector('.display'),
     container: _doc.querySelector('.container'),
+    loadingSpinner: _doc.querySelector('.spinner'),
     sectionCurr: _doc.querySelector('.current'),
     sectionFore: _doc.querySelector('.forecasts')
   });
@@ -113,7 +114,7 @@ const DOM = ((UTILS) => {
   // display error messages in DOM & remove after x secs.
   const errorAlert = (msg='Oh no! Something went wrong!') => {
     if (!document.querySelector('.error-div')) {
-      const delay = 3000;
+      const delay = 2700;
       const errDiv = templates.alert(msg);
       els.display.insertBefore(errDiv, els.container);
       setTimeout(() => {
@@ -138,8 +139,8 @@ const DATA = (() => {
     return new Promise((resolve, reject) => {
       navigator.geolocation.getCurrentPosition(resolve, (PositionError) => {
         const errorMessages = {
-          1: 'Browser Geolocation Denied. Using IP address.',
-          2: 'Browser Geolocation Not Supported. Using IP address.',
+          1: 'Browser Geolocation Blocked. Using IP Address Instead.',
+          2: 'Browser Geolocation Not Supported. Using IP Address Instead.',
         };
         errorAlert(errorMessages[PositionError.code] || '');
 
@@ -289,7 +290,7 @@ const mainCtrl = ( async (DOM, DATA, AUX) => {
   const coordinates = await getLocation(errorAlert)
     .catch(ipLocate => ipLocate.then(res => res.json()).catch(errorAlert));
 
-  // get, prep & print weather data
+  // get, prep & print weather data - hide 'loading spinner' before printing
   const getWeather = async (coords) => {
     const requestUrls = prepRequestUrls(coords);
     try {
@@ -299,6 +300,7 @@ const mainCtrl = ( async (DOM, DATA, AUX) => {
       const forecastsFormatted = formatForecastData(forecast);
       const currentTemplate = templates.current(currentFormatted);
       const forecastTemplate = templates.forecast(forecastsFormatted);
+      els.loadingSpinner.style.display = 'none';
       printer(currentTemplate, els.sectionCurr);
       printer(forecastTemplate, els.sectionFore);
     }
