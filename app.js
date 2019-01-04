@@ -201,7 +201,7 @@ const AUX = (() => {
   };
 
   // extract array of noon (time) forecasts for next 3 days
-  const _nextThreeDayNoonForecasts = (forecast) => {
+  const _noonForecasts = (forecast) => {
     const forecastArray = forecast.list;
     const noonForecasts = forecastArray.filter((item) => {
       // filter - accept only forecasts NOT from today and for noon (12:00)
@@ -211,9 +211,8 @@ const AUX = (() => {
         && item.dt_txt.includes('12:00:00')
       );
     });
-    const threeDayNoonForecast = noonForecasts.slice(0, 3);
 
-    return threeDayNoonForecast;
+    return noonForecasts;
   };
 
   // get weekday and date from date-time
@@ -256,7 +255,7 @@ const AUX = (() => {
 
   // format data for weather forecast
   const formatForecastData = (foreData) => {
-    const threeDayNoonForecasts = _nextThreeDayNoonForecasts(foreData);
+    const threeDayNoonForecasts = _noonForecasts(foreData);
     const forecastsFormatted = threeDayNoonForecasts.map((data) => {
       const dayDate = _getDayDate(data.dt);
       const dayTemp = _formatTemp(data.main.temp);
