@@ -18,21 +18,12 @@ const UTILS = (() => {
     return elements;
   };
 
-  // append elements to parent element
+  // append elements to parent element (element not on DOM)
   const appendKids = (parent, children) => {
     return children.map((child) => parent.appendChild(child));
   };
 
-  // clear all child elements of specified parent element
-  const clearKids = (element) => {
-    if (element.hasChildNodes()) {
-      element.removeChild(element.firstChild);
-
-      return UTILS.clearKids(element);
-    }
-  };
-
-  return Object.freeze({ makeEls, appendKids, clearKids });
+  return Object.freeze({ makeEls, appendKids });
 })();
 
 
@@ -41,10 +32,16 @@ const DOM = ((UTILS) => {
   const {makeEls, appendKids} = UTILS;
   const _doc = document;
 
+  // remove element after x millisecond delay - used by 'errorAlert'
+  const _delayedRemoveEl = (elQuerySelector, delay) => {
+    setTimeout(() => {
+      document.querySelector(elQuerySelector).remove();
+    }, delay);
+  };
+
   // DOM elements
   const els = Object.freeze({
-    display: _doc.querySelector('.display'),
-    container: _doc.querySelector('.container'),
+    errDisplay: _doc.querySelector('.error-display'),
     loadingSpinner: _doc.querySelector('.spinner'),
     sectionCurr: _doc.querySelector('.current'),
     sectionFore: _doc.querySelector('.forecasts')
@@ -111,22 +108,18 @@ const DOM = ((UTILS) => {
     }
   });
 
-  // display error messages in DOM & remove after x secs.
+  // display error messages in DOM & remove after x milliseconds
   const errorAlert = (msg='Oh no! Something went wrong!') => {
     if (!document.querySelector('.error-div')) {
       const delay = 2700;
       const errDiv = templates.alert(msg);
-      els.display.insertBefore(errDiv, els.container);
-      setTimeout(() => {
-        document.querySelector('.error-div').remove();
-      }, delay);
+      printer(errDiv, els.errDisplay);
+      _delayedRemoveEl('.error-div', delay);
     } 
   };
 
-  // append elements to DOM
-  const printer = (element, target) => {
-    return target.appendChild(element);
-  };
+  // append element to DOM element
+  const printer = (element, target) => target.appendChild(element);
 
   return Object.freeze({ els, templates, errorAlert, printer });
 })(UTILS);
@@ -168,8 +161,10 @@ const DATA = (() => {
   // FUNC. - make request for weather data
   const getWeatherData = async (urls, errorAlert) => {
     try {
-      const current = await fetch(urls.currentUrl).then(res => res.json());
-      const forecast = await fetch(urls.forecastUrl).then(res => res.json());
+      const [current, forecast] = await Promise.all([
+        fetch(urls.currentUrl).then(res => res.json()),
+        fetch(urls.forecastUrl).then(res => res.json())
+      ]);
 
       return {current, forecast};
     }
@@ -218,7 +213,11 @@ const AUX = (() => {
 
   // get weekday and date from date-time
   const _getDayDate = (dateTime) => {
+    // return appropriate 2 letter suffix for date
     const dateSuffix = (date) => {
+      // suffixes for 11, 12 & 13 = 'th' instead of 'st', 'nd' & 'rd'
+      const specialCases = [11, 12, 13];
+      if (specialCases.includes(date)) return 'th';
       const dateLastDigit = date.toString().split('').pop();
       const suffixes = {1: 'st', 2: 'nd', 3: 'rd'};
       
@@ -237,7 +236,7 @@ const AUX = (() => {
   // format data for current weather
   const formatCurrentData = (currData) => {
     const {main, wind, weather} = currData;
-    // group today's temps. & uppercase 1st letters of weather description 
+    // group today's temps. & uppercase 1st letters of weather description
     const currentTemp = _formatTemp(main.temp);
     const currDescription = _upperFirst(weather[0].description);
     // formatted weather data
