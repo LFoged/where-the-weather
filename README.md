@@ -1,5 +1,7 @@
 # Where-the-weather
 
+### [See it live](https://lfoged.github.io/where-the-weather/)
+
 ### Description
 Weather app. 
 Gets user's geo-location using browser navigator object if possible (& permitted by user), or else IP address.
