@@ -7,7 +7,7 @@ const UTILS = (() => {
   // make elements, assign className & textContent if present
   const makeEls = (elsArr) => {
     const elements = elsArr.map((elObj) => {
-      const {el, cls, text} = elObj;
+      const { el, cls, text } = elObj;
       const newEl = _doc.createElement(el);
       newEl.className = cls;
       if (text) newEl.textContent = text;
@@ -29,7 +29,7 @@ const UTILS = (() => {
 
 /** DOM-RELATED FUNCTIONS **/
 const DOM = ((UTILS) => {
-  const {makeEls, appendKids} = UTILS;
+  const { makeEls, appendKids } = UTILS;
   const _doc = document;
 
   // remove element after x millisecond delay - used by 'errorAlert'
@@ -51,8 +51,8 @@ const DOM = ((UTILS) => {
   const templates = Object.freeze({
     alert: (msg) => {
       const [errDiv, errMsg] = makeEls([
-        {el: 'div', cls: 'error-div'},
-        {el: 'p', cls: 'error-msg', text: msg}
+        { el: 'div', cls: 'error-div' },
+        { el: 'p', cls: 'error-msg', text: msg }
       ]);
       errDiv.appendChild(errMsg);
 
@@ -60,62 +60,62 @@ const DOM = ((UTILS) => {
     },
 
     current: (currData) => {
-      const {weather, humid, loc, temp, wind, iconUrl} = currData;
+      const { weather, humid, loc, temp, wind, iconUrl } = currData;
       const currentFragment = _doc.createDocumentFragment();
       const elsMinusIcon = makeEls([
-        {el: 'h2', cls: 'location', text: `${loc.area} - ${loc.country}`},
+        { el: 'h2', cls: 'location', text: `${loc.area} - ${loc.country}` },
         {
           el: 'p',
           cls: 'temp',
           text: `${temp.celsius}°C | ${temp.fahrenheit}°F`
         },
-        {el: 'p', cls: 'conditions', text: weather},
-        {el: 'p', cls: 'wind', text: `Wind speed: ${wind}m/s`},
-        {el: 'p', cls: 'humidity', text: `Relative Humidity: ${humid}%`}
+        { el: 'p', cls: 'conditions', text: weather },
+        { el: 'p', cls: 'wind', text: `Wind speed: ${wind}m/s` },
+        { el: 'p', cls: 'humidity', text: `Relative Humidity: ${humid}%` }
       ]);
-      const [icon] = makeEls([{el: 'img', cls: 'icon'}]);
+      const [icon] = makeEls([{ el: 'img', cls: 'icon' }]);
       icon.src = iconUrl;
       appendKids(currentFragment, [...elsMinusIcon, icon]);
-    
+
       return currentFragment;
     },
-  
+
     forecast: (forecastsArray) => {
       const forecastsFragment = document.createDocumentFragment();
       const forecastElements = forecastsArray.map((dayData, foreArrIndex) => {
-        const {day, date, temp, humid, weather, wind, iconUrl} = dayData;
+        const { day, date, temp, humid, weather, wind, iconUrl } = dayData;
         const [div, ...elsMinusDiv] = makeEls([
-          {el: 'div', cls: `forecast day-${foreArrIndex}`},
-          {el: 'p', cls: 'day-date', text: `${day} ${date}`},
+          { el: 'div', cls: `forecast day-${foreArrIndex}` },
+          { el: 'p', cls: 'day-date', text: `${day} ${date}` },
           {
             el: 'p',
             cls: 'temp-cel',
             text: `${temp.celsius}°C | ${temp.fahrenheit}°F`
           },
-          {el: 'p', cls: 'conditions', text: weather},
-          {el: 'p', cls: 'wind', text: `Wind Speed: ${wind}m/s`},
-          {el: 'p', cls: 'humidity', text: `Relative Humidity: ${humid}%`},
+          { el: 'p', cls: 'conditions', text: weather },
+          { el: 'p', cls: 'wind', text: `Wind Speed: ${wind}m/s` },
+          { el: 'p', cls: 'humidity', text: `Relative Humidity: ${humid}%` },
         ]);
-        const [icon] = makeEls([{el: 'img', cls: 'icon'}]);
+        const [icon] = makeEls([{ el: 'img', cls: 'icon' }]);
         icon.src = iconUrl;
         appendKids(div, [...elsMinusDiv, icon]);
-        
+
         return div;
       });
       appendKids(forecastsFragment, forecastElements);
-      
+
       return forecastsFragment;
     }
   });
 
   // display error messages in DOM & remove after x milliseconds
-  const errorAlert = (msg='Oh no! Something went wrong!') => {
+  const errorAlert = (msg = 'Oh no! Something went wrong!') => {
     if (!document.querySelector('.error-div')) {
       const delay = 2700;
       const errDiv = templates.alert(msg);
       printer(errDiv, els.errDisplay);
       _delayedRemoveEl('.error-div', delay);
-    } 
+    }
   };
 
   // append element to DOM element
@@ -140,7 +140,7 @@ const DATA = (() => {
         // on reject, get location through IP address (using 3rd party service)
         return reject(fetch('https://ipapi.co/json/'));
       });
-    });  
+    });
   };
 
   // format coordinates into URLs to make requests for weather data
@@ -166,9 +166,9 @@ const DATA = (() => {
         fetch(urls.forecastUrl).then(res => res.json())
       ]);
 
-      return {current, forecast};
+      return { current, forecast };
     }
-    catch(err) { return errorAlert(); }
+    catch (err) { return errorAlert(); }
   };
 
   return Object.freeze({ getLocation, prepRequestUrls, getWeatherData });
@@ -180,9 +180,9 @@ const AUX = (() => {
   // convert temperature from Kelvin to Celsius & Fahrenheit
   const _formatTemp = (tempInKelvin) => {
     const celsius = parseFloat((tempInKelvin - 273.15).toFixed(1));
-    const fahrenheit = parseFloat((tempInKelvin * 9/5 - 459.67).toFixed(1));
+    const fahrenheit = parseFloat((tempInKelvin * 9 / 5 - 459.67).toFixed(1));
 
-    return {celsius, fahrenheit};
+    return { celsius, fahrenheit };
   };
 
   // changes 1st letters of passed text to uppercase
@@ -201,7 +201,7 @@ const AUX = (() => {
     const forecastArray = forecast.list;
     const noonForecasts = forecastArray.filter((item) => {
       // filter - accept only forecasts NOT from today and for noon (12:00)
-      const today = new Date().getDay(); 
+      const today = new Date().getDay();
       return (
         new Date(item.dt * 1000).getDay() !== today
         && item.dt_txt.includes('12:00:00')
@@ -219,23 +219,23 @@ const AUX = (() => {
       const specialCases = [11, 12, 13];
       if (specialCases.includes(date)) return 'th';
       const dateLastDigit = date.toString().split('').pop();
-      const suffixes = {1: 'st', 2: 'nd', 3: 'rd'};
-      
+      const suffixes = { 1: 'st', 2: 'nd', 3: 'rd' };
+
       return suffixes[dateLastDigit] || 'th';
     };
-    
-    const weekDays = ['Sun.', 'Mon.', 'Tue.', 'Wed.', 'Thu.', 'Fri.', 'Sat.' ]  
+
+    const weekDays = ['Sun.', 'Mon.', 'Tue.', 'Wed.', 'Thu.', 'Fri.', 'Sat.']
     const unixTime = new Date(dateTime * 1000);
     const day = weekDays[unixTime.getDay()];
     const dateNum = unixTime.getDate();
     const date = `${dateNum}${dateSuffix(dateNum)}`;
 
-    return {day, date};
+    return { day, date };
   };
 
   // format data for current weather
   const formatCurrentData = (currData) => {
-    const {main, wind, weather} = currData;
+    const { main, wind, weather } = currData;
     // group today's temps. & uppercase 1st letters of weather description
     const currentTemp = _formatTemp(main.temp);
     const currDescription = _upperFirst(weather[0].description);
@@ -260,7 +260,7 @@ const AUX = (() => {
       const dayDate = _getDayDate(data.dt);
       const dayTemp = _formatTemp(data.main.temp);
       const dayDesc = _upperFirst(data.weather[0].description);
-      
+
       return {
         day: dayDate.day,
         date: dayDate.date,
@@ -280,10 +280,10 @@ const AUX = (() => {
 
 
 /* CONTROLLER - data flow: getLocation => getData => formatData => printData */
-const mainCtrl = ( async (DOM, DATA, AUX) => {
-  const {els, templates, errorAlert, printer} = DOM;
-  const {getLocation, prepRequestUrls, getWeatherData} = DATA;
-  const {formatCurrentData, formatForecastData} = AUX;
+const mainCtrl = (async (DOM, DATA, AUX) => {
+  const { els, templates, errorAlert, printer } = DOM;
+  const { getLocation, prepRequestUrls, getWeatherData } = DATA;
+  const { formatCurrentData, formatForecastData } = AUX;
 
   // get location from browser (on resolve) or fetch() IP address (on reject)
   const coordinates = await getLocation(errorAlert)
@@ -294,7 +294,7 @@ const mainCtrl = ( async (DOM, DATA, AUX) => {
     const requestUrls = prepRequestUrls(coords);
     try {
       const weatherData = await getWeatherData(requestUrls, errorAlert);
-      const {current, forecast} = weatherData;
+      const { current, forecast } = weatherData;
       const currentFormatted = formatCurrentData(current);
       const forecastsFormatted = formatForecastData(forecast);
       const currentTemplate = templates.current(currentFormatted);
@@ -303,7 +303,9 @@ const mainCtrl = ( async (DOM, DATA, AUX) => {
       printer(currentTemplate, els.sectionCurr);
       printer(forecastTemplate, els.sectionFore);
     }
-    catch(err) { return errorAlert() }
+    catch (err) {
+      return errorAlert();
+    }
   };
 
   // INITIATES PROGRAM
